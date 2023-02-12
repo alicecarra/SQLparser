@@ -1,6 +1,7 @@
 pub mod column;
 pub mod common;
 pub mod table;
+pub mod types;
 
 use serde_derive::{Deserialize, Serialize};
 use table::CreateTable;

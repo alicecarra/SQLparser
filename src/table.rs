@@ -72,13 +72,14 @@ pub fn schema_table_reference(input: &[u8]) -> IResult<&[u8], Table> {
 #[cfg(test)]
 mod tests {
     use crate::{
-        column::{Column, ColumnSpecification},
+        column::{Column, ColumnConstraint, ColumnSpecification},
         table::{table_creation, CreateTable, Table},
+        types::SqlType,
     };
 
     #[test]
     fn basic_table_creation() {
-        let sql = r#"create table [test].[clients] (FirstName varchar(255), SecondName varchar(255), isActive bool);"#;
+        let sql = r#"create table [test].[clients] (FirstName varchar(255) not null, SecondName varchar(255) not null, isActive bool not null);"#;
 
         let result = CreateTable {
             table: Table {
@@ -91,22 +92,22 @@ mod tests {
                     column: Column {
                         name: String::from("FirstName"),
                     },
-                    sql_type: crate::common::SqlType::VarChar(255),
-                    constraints: vec![],
+                    sql_type: SqlType::VarChar(255),
+                    constraints: vec![ColumnConstraint::NotNull],
                 },
                 ColumnSpecification {
                     column: Column {
                         name: String::from("SecondName"),
                     },
-                    sql_type: crate::common::SqlType::VarChar(255),
-                    constraints: vec![],
+                    sql_type: SqlType::VarChar(255),
+                    constraints: vec![ColumnConstraint::NotNull],
                 },
                 ColumnSpecification {
                     column: Column {
                         name: String::from("isActive"),
                     },
-                    sql_type: crate::common::SqlType::Bool,
-                    constraints: vec![],
+                    sql_type: SqlType::Bool,
+                    constraints: vec![ColumnConstraint::NotNull],
                 },
             ],
         };

@@ -10,7 +10,10 @@ use nom::{
 };
 use serde_derive::{Deserialize, Serialize};
 
-use crate::common::{comma_separator, type_identifier, valid_identifier, Literal, Real, SqlType};
+use crate::{
+    common::{comma_separator, valid_identifier},
+    types::{type_identifier, Literal, Real, SqlType},
+};
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq, Serialize, Deserialize)]
 pub struct ColumnSpecification {
