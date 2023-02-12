@@ -1,66 +1,110 @@
 use nom::{
     bytes::complete::{tag, tag_no_case},
-    character::{
-        complete::{multispace1},
-    },
+    character::complete::{multispace0, multispace1},
     combinator::{map, opt},
     sequence::{pair, tuple},
     IResult,
 };
 use serde_derive::{Deserialize, Serialize};
 
-use crate::common::{sql_identifier, statement_terminator};
+use crate::{
+    column::{column_specification_list, ColumnSpecification},
+    common::{as_alias, sql_identifier, statement_terminator},
+};
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq, Serialize, Deserialize)]
 pub struct CreateTable {
-    table: Table,
+    pub table: Table,
+    pub fields: Vec<ColumnSpecification>,
 }
 
 #[derive(Clone, Debug, Default, Eq, Hash, PartialEq, Serialize, Deserialize)]
 pub struct Table {
     pub name: String,
+    pub alias: Option<String>,
     pub schema: Option<String>,
 }
 
 pub fn table_creation(input: &[u8]) -> IResult<&[u8], CreateTable> {
-    let (remaining_input, (_create_keyword, _, _table_keyword, _, table, _terminator)) =
-        tuple((
-            tag_no_case("create"),
-            multispace1,
-            tag_no_case("table"),
-            multispace1,
-            schema_table_reference,
-            statement_terminator,
-        ))(input)?;
+    let (
+        remaining_input,
+        (_create_keyword, _, _table_keyword, _, table, _, _, fields, _, _terminator),
+    ) = tuple((
+        tag_no_case("create"),
+        multispace1,
+        tag_no_case("table"),
+        multispace1,
+        schema_table_reference,
+        multispace0,
+        tag("("),
+        column_specification_list,
+        tag(")"),
+        statement_terminator,
+    ))(input)?;
 
-    Ok((remaining_input, CreateTable { table }))
+    Ok((remaining_input, CreateTable { table, fields }))
 }
 
 // Parse a reference to a named schema.table. TODO: ADD ALIAS!
-pub fn schema_table_reference(i: &[u8]) -> IResult<&[u8], Table> {
+pub fn schema_table_reference(input: &[u8]) -> IResult<&[u8], Table> {
     map(
-        tuple((opt(pair(sql_identifier, tag("."))), sql_identifier)),
-        |tup| Table {
-            name: String::from(std::str::from_utf8(tup.1).unwrap()),
-            schema: tup
-                .0
-                .map(|(schema, _)| String::from(std::str::from_utf8(schema).unwrap())),
+        tuple((
+            opt(pair(sql_identifier, tag("."))),
+            sql_identifier,
+            opt(as_alias),
+        )),
+        |(schema_with_dot, identifier, alias)| Table {
+            name: String::from(std::str::from_utf8(identifier).unwrap()),
+            schema: schema_with_dot
+                .map(|(schema, _dot)| String::from(std::str::from_utf8(schema).unwrap())),
+            alias: alias.map(String::from),
         },
-    )(i)
+    )(input)
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::table::{table_creation, CreateTable, Table};
+    use crate::{
+        column::{Column, ColumnSpecification},
+        table::{table_creation, CreateTable, Table},
+    };
 
     #[test]
     fn basic_table_creation() {
-        let sql = "create table [test].[clients]; garbage";
+        let sql = r#"create table [test].[clients] (
+                                FirstName   varchar(255),
+                                SecondName  varchar(255),
+                                isActive    bool); garbage"#;
+
         let result = CreateTable {
             table: Table {
                 name: String::from("clients"),
                 schema: Some(String::from("test")),
+                alias: None,
             },
+            fields: vec![
+                ColumnSpecification {
+                    column: Column {
+                        name: String::from("FirstName"),
+                    },
+                    sql_type: crate::common::SqlType::VarChar(255),
+                    constraints: vec![],
+                },
+                ColumnSpecification {
+                    column: Column {
+                        name: String::from("SecondName"),
+                    },
+                    sql_type: crate::common::SqlType::VarChar(255),
+                    constraints: vec![],
+                },
+                ColumnSpecification {
+                    column: Column {
+                        name: String::from("FirstName"),
+                    },
+                    sql_type: crate::common::SqlType::Bool,
+                    constraints: vec![],
+                },
+            ],
         };
 
         assert_eq!(table_creation(sql.as_bytes()).unwrap().1, result);
