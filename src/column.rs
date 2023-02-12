@@ -3,6 +3,7 @@ use nom::{
     bytes::complete::{tag, tag_no_case, take_until},
     character::complete::{digit1, multispace0, multispace1},
     combinator::{map, opt},
+    error::context,
     multi::{many0, many1},
     sequence::{delimited, tuple},
     IResult,
@@ -61,7 +62,7 @@ pub fn field_specification(input: &[u8]) -> IResult<&[u8], ColumnSpecification> 
 }
 
 pub fn column_specification_list(input: &[u8]) -> IResult<&[u8], Vec<ColumnSpecification>> {
-    many1(field_specification)(input)
+    context("column specification list", many1(field_specification))(input)
 }
 
 // Parse rule for a column definition constraint.

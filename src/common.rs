@@ -6,6 +6,7 @@ use nom::{
         is_alphanumeric,
     },
     combinator::{eof, map, not, opt, peek},
+    error::context,
     sequence::{delimited, pair, preceded, terminated, tuple},
     IResult,
 };
@@ -13,15 +14,21 @@ use serde_derive::{Deserialize, Serialize};
 
 #[inline]
 pub fn valid_identifier(input: &[u8]) -> IResult<&[u8], &[u8]> {
-    preceded(not(peek(sql_keyword)), take_while1(is_sql_identifier))(input)
+    context(
+        "valid identifier",
+        preceded(not(peek(sql_keyword)), take_while1(is_sql_identifier)),
+    )(input)
 }
 
 pub fn sql_identifier(input: &[u8]) -> IResult<&[u8], &[u8]> {
-    alt((
-        valid_identifier,
-        delimited(tag("`"), take_while1(is_sql_identifier), tag("`")),
-        delimited(tag("["), take_while1(is_sql_identifier), tag("]")),
-    ))(input)
+    context(
+        "sql identifier",
+        alt((
+            valid_identifier,
+            delimited(tag("`"), take_while1(is_sql_identifier), tag("`")),
+            delimited(tag("["), take_while1(is_sql_identifier), tag("]")),
+        )),
+    )(input)
 }
 #[inline]
 pub fn is_sql_identifier(chr: u8) -> bool {

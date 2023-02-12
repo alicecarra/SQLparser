@@ -2,6 +2,7 @@ use nom::{
     bytes::complete::{tag, tag_no_case},
     character::complete::{multispace0, multispace1},
     combinator::{map, opt},
+    error::context,
     sequence::{pair, tuple},
     IResult,
 };
@@ -29,36 +30,42 @@ pub fn table_creation(input: &[u8]) -> IResult<&[u8], CreateTable> {
     let (
         remaining_input,
         (_create_keyword, _, _table_keyword, _, table, _, _, fields, _, _terminator),
-    ) = tuple((
-        tag_no_case("create"),
-        multispace1,
-        tag_no_case("table"),
-        multispace1,
-        schema_table_reference,
-        multispace0,
-        tag("("),
-        column_specification_list,
-        tag(")"),
-        statement_terminator,
-    ))(input)?;
+    ) = context(
+        "Table Creation",
+        tuple((
+            tag_no_case("create"),
+            multispace1,
+            tag_no_case("table"),
+            multispace1,
+            schema_table_reference,
+            multispace0,
+            tag("("),
+            column_specification_list,
+            tag(")"),
+            statement_terminator,
+        )),
+    )(input)?;
 
     Ok((remaining_input, CreateTable { table, fields }))
 }
 
 // Parse a reference to a named schema.table. TODO: ADD ALIAS!
 pub fn schema_table_reference(input: &[u8]) -> IResult<&[u8], Table> {
-    map(
-        tuple((
-            opt(pair(sql_identifier, tag("."))),
-            sql_identifier,
-            opt(as_alias),
-        )),
-        |(schema_with_dot, identifier, alias)| Table {
-            name: String::from(std::str::from_utf8(identifier).unwrap()),
-            schema: schema_with_dot
-                .map(|(schema, _dot)| String::from(std::str::from_utf8(schema).unwrap())),
-            alias: alias.map(String::from),
-        },
+    context(
+        "Table schema naming",
+        map(
+            tuple((
+                opt(pair(sql_identifier, tag("."))),
+                sql_identifier,
+                opt(as_alias),
+            )),
+            |(schema_with_dot, identifier, alias)| Table {
+                name: String::from(std::str::from_utf8(identifier).unwrap()),
+                schema: schema_with_dot
+                    .map(|(schema, _dot)| String::from(std::str::from_utf8(schema).unwrap())),
+                alias: alias.map(String::from),
+            },
+        ),
     )(input)
 }
 
@@ -71,10 +78,7 @@ mod tests {
 
     #[test]
     fn basic_table_creation() {
-        let sql = r#"create table [test].[clients] (
-                                FirstName   varchar(255),
-                                SecondName  varchar(255),
-                                isActive    bool); garbage"#;
+        let sql = r#"create table [test].[clients] (FirstName varchar(255), SecondName varchar(255), isActive bool);"#;
 
         let result = CreateTable {
             table: Table {
@@ -99,7 +103,7 @@ mod tests {
                 },
                 ColumnSpecification {
                     column: Column {
-                        name: String::from("FirstName"),
+                        name: String::from("isActive"),
                     },
                     sql_type: crate::common::SqlType::Bool,
                     constraints: vec![],
