@@ -8,7 +8,7 @@ use nom::{
     sequence::{delimited, tuple},
     IResult,
 };
-use serde_derive::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize};
 
 use crate::{
     common::{comma_separator, valid_identifier},

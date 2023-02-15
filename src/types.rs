@@ -6,7 +6,7 @@ use nom::{
     sequence::tuple,
     IResult,
 };
-use serde_derive::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize};
 
 use crate::common::{delimited_digit, len_as_u16, opt_signed};
 

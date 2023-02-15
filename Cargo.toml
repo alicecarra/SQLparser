@@ -8,7 +8,6 @@ authors = ["Alice Carra <aalicecarra@gmail.com>"]
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-serde = "1.0"
-serde_derive = "1.0"
+serde = { version = "1.0", features = ["derive"] }
 
 nom = "7.1"
